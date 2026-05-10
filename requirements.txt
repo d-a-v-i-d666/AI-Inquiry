@@ -1,0 +1,26 @@
+# Core ML
+torch
+transformers
+datasets
+huggingface_hub
+
+# Data processing
+pandas
+numpy
+scikit-learn
+
+# Visualization
+matplotlib
+
+# App
+gradio
+
+# Tokenization
+jieba
+sentencepiece
+tiktoken
+
+# QLoRA
+peft
+bitsandbytes
+accelerate
