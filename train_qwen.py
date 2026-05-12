@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 import torch
 from datasets import Dataset
-from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from peft import LoraConfig, PeftModel, get_peft_model, prepare_model_for_kbit_training
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from transformers import (
     AutoModelForCausalLM,
@@ -394,6 +394,7 @@ def main() -> None:
     parser.add_argument("--run-eval", action="store_true")
     parser.add_argument("--eval-split", default="val", choices=["val", "test"])
     parser.add_argument("--max-eval-samples", type=int, default=200)
+    parser.add_argument("--eval-only", action="store_true")
 
     parser.add_argument("--lora-r", type=int, default=16)
     parser.add_argument("--lora-alpha", type=int, default=32)
@@ -471,76 +472,77 @@ def main() -> None:
         task_type="CAUSAL_LM",
     )
 
-    model = get_peft_model(model, lora_config)
+    if args.eval_only:
+        model = PeftModel.from_pretrained(model, str(adapter_dir), is_trainable=False)
+    else:
+        model = get_peft_model(model, lora_config)
 
-    train_ds = build_dataset(
-        train_df,
-        tokenizer=tokenizer,
-        system_prompt=system_prompt,
-        max_length=args.max_length,
-        use_jieba=use_jieba,
-    )
-    val_ds = build_dataset(
-        val_df,
-        tokenizer=tokenizer,
-        system_prompt=system_prompt,
-        max_length=args.max_length,
-        use_jieba=use_jieba,
-    )
+        train_ds = build_dataset(
+            train_df,
+            tokenizer=tokenizer,
+            system_prompt=system_prompt,
+            max_length=args.max_length,
+            use_jieba=use_jieba,
+        )
+        val_ds = build_dataset(
+            val_df,
+            tokenizer=tokenizer,
+            system_prompt=system_prompt,
+            max_length=args.max_length,
+            use_jieba=use_jieba,
+        )
 
-    training_args = TrainingArguments(
-        output_dir=str(output_dir),
-        overwrite_output_dir=True,
-        per_device_train_batch_size=args.train_batch_size,
-        per_device_eval_batch_size=args.eval_batch_size,
-        gradient_accumulation_steps=args.gradient_accumulation,
-        num_train_epochs=args.num_train_epochs,
-        learning_rate=args.learning_rate,
-        warmup_steps=args.warmup_steps,
-        weight_decay=args.weight_decay,
-        logging_steps=args.logging_steps,
-        save_strategy="epoch",
-        save_total_limit=args.save_total_limit,
-        evaluation_strategy="epoch",
-        report_to="none",
-        fp16=torch.cuda.is_available() and not torch.cuda.is_bf16_supported(),
-        bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
-        remove_unused_columns=False,
-        optim="paged_adamw_8bit",
-        seed=args.seed,
-    )
+        training_args = TrainingArguments(
+            output_dir=str(output_dir),
+            per_device_train_batch_size=args.train_batch_size,
+            per_device_eval_batch_size=args.eval_batch_size,
+            gradient_accumulation_steps=args.gradient_accumulation,
+            num_train_epochs=args.num_train_epochs,
+            learning_rate=args.learning_rate,
+            warmup_steps=args.warmup_steps,
+            weight_decay=args.weight_decay,
+            logging_steps=args.logging_steps,
+            save_strategy="epoch",
+            save_total_limit=args.save_total_limit,
+            report_to="none",
+            fp16=torch.cuda.is_available() and not torch.cuda.is_bf16_supported(),
+            bf16=torch.cuda.is_available() and torch.cuda.is_bf16_supported(),
+            remove_unused_columns=False,
+            optim="paged_adamw_8bit",
+            seed=args.seed,
+        )
 
-    trainer = Trainer(
-        model=model,
-        args=training_args,
-        train_dataset=train_ds,
-        eval_dataset=val_ds,
-        data_collator=lambda features: collate_fn(tokenizer, features),
-    )
+        trainer = Trainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_ds,
+            eval_dataset=val_ds,
+            data_collator=lambda features: collate_fn(tokenizer, features),
+        )
 
-    train_result = trainer.train()
-    trainer.save_model(str(adapter_dir))
-    tokenizer.save_pretrained(str(adapter_dir))
+        train_result = trainer.train()
+        trainer.save_model(str(adapter_dir))
+        tokenizer.save_pretrained(str(adapter_dir))
 
-    run_summary = {
-        "train_size": len(train_df),
-        "val_size": len(val_df),
-        "test_size": len(test_df),
-        "max_length": args.max_length,
-        "gradient_accumulation": args.gradient_accumulation,
-        "train_metrics": train_result.metrics,
-        "adapter_dir": str(adapter_dir),
-        "system_prompt": system_prompt,
-        "use_jieba": use_jieba,
-    }
+        run_summary = {
+            "train_size": len(train_df),
+            "val_size": len(val_df),
+            "test_size": len(test_df),
+            "max_length": args.max_length,
+            "gradient_accumulation": args.gradient_accumulation,
+            "train_metrics": train_result.metrics,
+            "adapter_dir": str(adapter_dir),
+            "system_prompt": system_prompt,
+            "use_jieba": use_jieba,
+        }
 
-    summary_path = output_dir / "run_summary.json"
-    with open(summary_path, "w", encoding="utf-8") as file:
-        json.dump(run_summary, file, ensure_ascii=False, indent=2)
+        summary_path = output_dir / "run_summary.json"
+        with open(summary_path, "w", encoding="utf-8") as file:
+            json.dump(run_summary, file, ensure_ascii=False, indent=2)
 
-    print("Training finished.")
-    print(f"Adapter saved to: {adapter_dir}")
-    print(f"Run summary saved to: {summary_path}")
+        print("Training finished.")
+        print(f"Adapter saved to: {adapter_dir}")
+        print(f"Run summary saved to: {summary_path}")
 
     if args.run_eval:
         eval_df = val_df if args.eval_split == "val" else test_df

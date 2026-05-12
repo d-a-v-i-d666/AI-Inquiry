@@ -9,6 +9,7 @@
 - Qwen3.6 QLoRA 微调脚本，固定 JSON 输出格式
 - 34 个科室分类标签映射与一致化预处理
 - Gradio 交互式分诊对话界面，支持 Top-K 候选
+- FastAPI 推理服务 + React 前端（/api, /web）
 
 ## Project Structure
 
@@ -22,13 +23,15 @@
 - train_qwen.py: Qwen3.6 QLoRA 训练脚本
 - train.py: 旧版 TXT 训练脚本（保留）
 - triage_chat_app.py: 分诊对话界面与 CLI 预测
+- api/: FastAPI 推理服务
+- web/: React + TypeScript 前端
 
 ## Quickstart
 
 ### Install
 
 ```bash
-pip install -U torch transformers datasets pandas numpy scikit-learn matplotlib huggingface_hub gradio jieba peft bitsandbytes accelerate
+pip install -r requirements.txt
 ```
 
 如果不想使用 jieba 分词，可在训练/推理时加 `--disable-jieba`。
@@ -87,6 +90,36 @@ python triage_chat_app.py \
   --port 7860
 ```
 
+### Web (FastAPI + React)
+
+启动后端：
+
+```bash
+python -m api.main \
+  --experiment-dir outputs/mc-bert-data-lr2e5-bs128 \
+  --host 0.0.0.0 \
+  --port 8000
+```
+
+如需启用 Qwen2.5-14B（本地权重 + LoRA 适配器）：
+
+```bash
+python -m api.main \
+  --model-dir outputs/mc-bert-data-lr2e5-bs128 \
+  --qwen-model-dir /root/autodl-tmp/models/Qwen2.5-14B \
+  --qwen-adapter-dir /root/autodl-tmp/models/qwen2.5-14b-qlora \
+  --host 0.0.0.0 \
+  --port 8000
+```
+
+启动前端：
+
+```bash
+cd web
+npm install
+npm run dev -- --host 0.0.0.0 --port 5173
+```
+
 ## Data Format
 
 ### CSV（训练主用）
@@ -105,6 +138,7 @@ python triage_chat_app.py \
 
 - 默认基座模型为 `freedomking/mc-bert`，首次训练会自动下载到 models/。
 - Qwen3.6 训练需要 4-bit 量化依赖（bitsandbytes）和足够显存；必要时调小 `--max-length` 或梯度累积。
+- FastAPI 推理服务默认使用本地模型目录（`local_files_only=True`）。
 - .gitignore 已忽略 data/、data_csv/、dataset/、models/、outputs/。如需提交这些目录，请自行调整。
 
 ## License

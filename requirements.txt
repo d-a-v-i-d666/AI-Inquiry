@@ -1,26 +1,28 @@
 # Core ML
-torch
-transformers
-datasets
-huggingface_hub
+torch==2.11.0
+torchvision==0.26.0
+transformers==5.3.0
+datasets==4.8.5
+huggingface_hub==1.14.0
 
 # Data processing
-pandas
-numpy
-scikit-learn
+pandas==3.0.2
+numpy==2.4.4
+scikit-learn==1.8.0
 
 # Visualization
-matplotlib
+matplotlib==3.10.9
 
 # App
-gradio
+fastapi==0.115.0
+uvicorn==0.30.6
 
 # Tokenization
-jieba
-sentencepiece
-tiktoken
+jieba==0.42.1
+sentencepiece==0.2.1
+tiktoken==0.12.0
 
 # QLoRA
-peft
-bitsandbytes
-accelerate
+peft==0.19.1
+bitsandbytes==0.49.2
+accelerate==1.13.0

@@ -42,6 +42,8 @@ dataset/
 models/
 outputs/
 
+# Node.js modules
+node_modules
 
-# 数据处理
+# data processing scripts
 prepare_data_csv.py
