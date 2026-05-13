@@ -4,25 +4,20 @@
 
 ## Features
 
-- TXT → CSV 预处理脚本，统一 label_name/label_id
+- CSV 预处理脚本，统一 label_name/label_id
 - MC-BERT CSV 微调脚本，输出评估指标与 loss 曲线
 - Qwen QLoRA 微调脚本，固定 JSON 输出格式（Qwen2.5）
 - 34 个科室分类标签映射与一致化预处理
-- Gradio 交互式分诊对话界面，支持 Top-K 候选
 - FastAPI 推理服务 + React 前端（/api, /web）
 
 ## Project Structure
 
-- data/: v2.0Train/Val/Test 原始 TXT（每行: 科室\t文本）
 - data_csv/: CSV 训练/验证/测试文件
 - dataset/: 早期实验数据集
 - models/: 基座与微调后的模型
 - outputs/: 训练日志、checkpoint、评估产物
-- prepare_data_csv.py: TXT → CSV 预处理脚本
 - train_mc_bert.py: MC-BERT CSV 训练脚本
 - train_qwen.py: Qwen QLoRA 训练脚本
-- train.py: 旧版 TXT 训练脚本（保留）
-- triage_chat_app.py: 分诊对话界面与 CLI 预测
 - api/: FastAPI 推理服务
 - web/: React + TypeScript 前端
 
