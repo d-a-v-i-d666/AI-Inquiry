@@ -6,7 +6,7 @@
 
 - TXT → CSV 预处理脚本，统一 label_name/label_id
 - MC-BERT CSV 微调脚本，输出评估指标与 loss 曲线
-- Qwen3.6 QLoRA 微调脚本，固定 JSON 输出格式
+- Qwen QLoRA 微调脚本，固定 JSON 输出格式（Qwen3.6/Qwen2.5）
 - 34 个科室分类标签映射与一致化预处理
 - Gradio 交互式分诊对话界面，支持 Top-K 候选
 - FastAPI 推理服务 + React 前端（/api, /web）
@@ -20,7 +20,7 @@
 - outputs/: 训练日志、checkpoint、评估产物
 - prepare_data_csv.py: TXT → CSV 预处理脚本
 - train_mc_bert.py: MC-BERT CSV 训练脚本
-- train_qwen.py: Qwen3.6 QLoRA 训练脚本
+- train_qwen.py: Qwen QLoRA 训练脚本
 - train.py: 旧版 TXT 训练脚本（保留）
 - triage_chat_app.py: 分诊对话界面与 CLI 预测
 - api/: FastAPI 推理服务
@@ -57,7 +57,7 @@ python train_mc_bert.py \
   --finetuned-dir models/mc-bert-csv
 ```
 
-### Train (Qwen3.6 QLoRA)
+### Train (Qwen QLoRA)
 
 ```bash
 python train_qwen.py \
@@ -96,7 +96,7 @@ python triage_chat_app.py \
 
 ```bash
 python -m api.main \
-  --experiment-dir outputs/mc-bert-data-lr2e5-bs128 \
+  --model-dir outputs/mc-bert-data-lr2e5-bs128 \
   --host 0.0.0.0 \
   --port 8000
 ```
@@ -139,6 +139,7 @@ npm run dev -- --host 0.0.0.0 --port 5173
 - 默认基座模型为 `freedomking/mc-bert`，首次训练会自动下载到 models/。
 - Qwen3.6 训练需要 4-bit 量化依赖（bitsandbytes）和足够显存；必要时调小 `--max-length` 或梯度累积。
 - FastAPI 推理服务默认使用本地模型目录（`local_files_only=True`）。
+- 若前端请求失败，请确认 Vite 代理已启用（/api 前缀会转发到 8000 端口）。
 - .gitignore 已忽略 data/、data_csv/、dataset/、models/、outputs/。如需提交这些目录，请自行调整。
 
 ## License
