@@ -50,3 +50,6 @@ data_csv/
 dataset/
 models/
 outputs/
+
+# test
+test.ipynb

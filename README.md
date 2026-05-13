@@ -1,6 +1,6 @@
 # AI-Inquiry
 
-基于 MC-BERT 的分诊分类基线，面向后续与 Qwen3.6 结合的专家分诊系统。
+基于 MC-BERT 的分诊分类基线，面向后续与 Qwen2.5 结合的专家分诊系统。
 
 ## Features
 
@@ -36,14 +36,6 @@ pip install -r requirements.txt
 
 如果不想使用 jieba 分词，可在训练/推理时加 `--disable-jieba`。
 
-### Prepare CSV
-
-```bash
-python prepare_data_csv.py \
-  --workspace-dir . \
-  --input-dir data \
-  --output-dir data_csv
-```
 
 ### Train (MC-BERT)
 
@@ -60,52 +52,38 @@ python train_mc_bert.py \
 ### Train (Qwen QLoRA)
 
 ```bash
-python train_qwen.py \
+LD_LIBRARY_PATH=/root/miniconda3/lib/python3.12/site-packages/nvidia/cu13/lib:$LD_LIBRARY_PATH \
+HF_HOME=/root/autodl-tmp/hf-cache HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+/root/miniconda3/bin/python train_qwen.py \
   --workspace-dir . \
-  --train-csv data_csv/train.csv \
-  --val-csv data_csv/val.csv \
-  --test-csv data_csv/test.csv \
-  --output-dir outputs/qwen3.6-27b-qlora \
-  --adapter-dir models/qwen3.6-27b-qlora \
-  --trust-remote-code \
-  --run-eval
+  --model-id /root/autodl-tmp/models/Qwen2.5-14B \
+  --cache-dir /root/autodl-tmp/hf-cache \
+  --output-dir /root/autodl-tmp/outputs/qwen2.5-14b-qlora \
+  --adapter-dir /root/autodl-tmp/models/qwen2.5-14b-qlora \
+  --run-eval \
+  --eval-split val \
+  --max-eval-samples 200
 ```
 
-### Inference
 
-CLI 预测：
-
-```bash
-python triage_chat_app.py \
-  --experiment-dir outputs/mc-bert-data-lr2e5-bs128 \
-  --test-text "最近咳嗽发烧胸闷，应该挂什么科？"
-```
-
-启动 Gradio：
-
-```bash
-python triage_chat_app.py \
-  --experiment-dir outputs/mc-bert-data-lr2e5-bs128 \
-  --host 0.0.0.0 \
-  --port 7860
-```
 
 ### Web (FastAPI + React)
 
-启动后端：
+启动后端（只有全量微调后的MC-BERT）：
 
 ```bash
 python -m api.main \
-  --model-dir outputs/mc-bert-data-lr2e5-bs128 \
+  --model-dir /root/AI-Inquiry/models/mc-bert-csv \
   --host 0.0.0.0 \
   --port 8000
 ```
 
-如需启用 Qwen2.5-14B（本地权重 + LoRA 适配器）：
+如需额外启用 Qwen2.5-14B（本地权重 + LoRA 适配器）：
 
 ```bash
 python -m api.main \
-  --model-dir outputs/mc-bert-data-lr2e5-bs128 \
+  --model-dir /root/AI-Inquiry/models/mc-bert-csv \
   --qwen-model-dir /root/autodl-tmp/models/Qwen2.5-14B \
   --qwen-adapter-dir /root/autodl-tmp/models/qwen2.5-14b-qlora \
   --host 0.0.0.0 \

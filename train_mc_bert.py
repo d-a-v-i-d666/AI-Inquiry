@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
 import re
 from pathlib import Path
@@ -17,6 +18,7 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from transformers import (
     AutoModelForSequenceClassification,
     AutoTokenizer,
+    BertTokenizer,
     DataCollatorWithPadding,
     EarlyStoppingCallback,
     Trainer,
@@ -188,7 +190,6 @@ def dataframe_to_dataset(df: pd.DataFrame) -> Dataset:
 def build_training_arguments(args: argparse.Namespace, output_dir: Path) -> TrainingArguments:
     common_kwargs = dict(
         output_dir=str(output_dir),
-        overwrite_output_dir=True,
         learning_rate=args.learning_rate,
         per_device_train_batch_size=args.train_batch_size,
         per_device_eval_batch_size=args.eval_batch_size,
@@ -204,11 +205,15 @@ def build_training_arguments(args: argparse.Namespace, output_dir: Path) -> Trai
         fp16=torch.cuda.is_available() and (not args.disable_fp16),
         seed=args.seed,
     )
+    supported = set(inspect.signature(TrainingArguments.__init__).parameters)
+    kwargs = {key: value for key, value in common_kwargs.items() if key in supported}
 
-    try:
-        return TrainingArguments(eval_strategy="epoch", **common_kwargs)
-    except TypeError:
-        return TrainingArguments(evaluation_strategy="epoch", **common_kwargs)
+    if "eval_strategy" in supported:
+        kwargs["eval_strategy"] = "epoch"
+    elif "evaluation_strategy" in supported:
+        kwargs["evaluation_strategy"] = "epoch"
+
+    return TrainingArguments(**kwargs)
 
 
 def compute_metrics(eval_pred):
@@ -377,7 +382,17 @@ def main() -> None:
     set_seed(args.seed)
 
     ensure_local_base_model(args.model_id, local_model_dir, cache_dir)
-    tokenizer = AutoTokenizer.from_pretrained(str(local_model_dir), local_files_only=True)
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(
+            str(local_model_dir),
+            local_files_only=True,
+            use_fast=False,
+        )
+    except ValueError:
+        tokenizer = BertTokenizer.from_pretrained(
+            str(local_model_dir),
+            local_files_only=True,
+        )
 
     train_df = read_csv_split(train_path)
     val_df = read_csv_split(val_path)
@@ -439,16 +454,23 @@ def main() -> None:
     data_collator = DataCollatorWithPadding(tokenizer=tokenizer)
     training_args = build_training_arguments(args, output_dir)
 
-    trainer = Trainer(
-        model=classifier_model,
-        args=training_args,
-        train_dataset=train_ds,
-        eval_dataset=val_ds,
-        tokenizer=tokenizer,
-        data_collator=data_collator,
-        compute_metrics=compute_metrics,
-        callbacks=[EarlyStoppingCallback(early_stopping_patience=args.early_stopping_patience)],
-    )
+    trainer_kwargs = {
+        "model": classifier_model,
+        "args": training_args,
+        "train_dataset": train_ds,
+        "eval_dataset": val_ds,
+        "tokenizer": tokenizer,
+        "data_collator": data_collator,
+        "compute_metrics": compute_metrics,
+        "callbacks": [
+            EarlyStoppingCallback(
+                early_stopping_patience=args.early_stopping_patience
+            )
+        ],
+    }
+    trainer_supported = set(inspect.signature(Trainer.__init__).parameters)
+    trainer_kwargs = {key: value for key, value in trainer_kwargs.items() if key in trainer_supported}
+    trainer = Trainer(**trainer_kwargs)
 
     train_result = trainer.train()
     val_metrics = trainer.evaluate(eval_dataset=val_ds, metric_key_prefix="val")
