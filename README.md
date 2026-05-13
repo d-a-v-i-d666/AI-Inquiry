@@ -6,7 +6,7 @@
 
 - TXT → CSV 预处理脚本，统一 label_name/label_id
 - MC-BERT CSV 微调脚本，输出评估指标与 loss 曲线
-- Qwen QLoRA 微调脚本，固定 JSON 输出格式（Qwen3.6/Qwen2.5）
+- Qwen QLoRA 微调脚本，固定 JSON 输出格式（Qwen2.5）
 - 34 个科室分类标签映射与一致化预处理
 - Gradio 交互式分诊对话界面，支持 Top-K 候选
 - FastAPI 推理服务 + React 前端（/api, /web）
